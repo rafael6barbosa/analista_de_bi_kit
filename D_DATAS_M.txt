@@ -1,0 +1,45 @@
+let
+    Fonte = List.Dates(#date(2020, 01, 01), 5475, #duration(1, 0, 0, 0)),
+    #"Convertido para Tabela" = Table.FromList(Fonte, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    SKDATA = Table.RenameColumns(#"Convertido para Tabela",{{"Column1", "SKDATA"}}),
+    #"Coluna Duplicada" = Table.DuplicateColumn(SKDATA, "SKDATA", "SKDATA - Copiar"),
+    #"Coluna Duplicada1" = Table.DuplicateColumn(#"Coluna Duplicada", "SKDATA - Copiar", "SKDATA - Copiar - Copiar"),
+    #"DATA E DATA2" = Table.RenameColumns(#"Coluna Duplicada1",{{"SKDATA - Copiar", "DATA"}, {"SKDATA - Copiar - Copiar", "DATA2"}}),
+    ANO = Table.AddColumn(#"DATA E DATA2", "ANO", each Date.Year([DATA])),
+    MES = Table.AddColumn(ANO, "MES", each Date.Month([DATA])),
+    DIA = Table.AddColumn(MES, "DIA", each Date.Day([DATA])),
+    NUMERO_DIA_SEMANA = Table.AddColumn(DIA, "NUMERO_DIA_SEMANA", each Date.DayOfWeek([DATA])),
+    DIA_SEMANA = Table.AddColumn(NUMERO_DIA_SEMANA, "DIA_SEMANA", each Text.Proper(Date.DayOfWeekName([DATA]))),
+    DIA_ANO = Table.AddColumn(DIA_SEMANA, "DIA_ANO", each Date.DayOfYear([DATA])),
+    NOME_MES = Table.AddColumn(DIA_ANO, "NOME_MES", each Text.Proper(Date.MonthName([DATA]))),
+    NOME_MES_ABREV = Table.AddColumn(NOME_MES, "NOME_MES_ABREV", each Text.Start(Text.Proper(Date.MonthName([DATA])),3)),
+    ANO_MES = Table.AddColumn(NOME_MES_ABREV, "ANO_MES", each Number.FromText(
+Number.ToText(Date.Year([DATA])) 
+
+& Text.PadStart(
+    Number.ToText(Date.Month([DATA])), 2,"0")
+
+)),
+    NOME_ANO_MES = Table.AddColumn(ANO_MES, "NOME_ANO_MES", each Text.Start(Text.Proper(Date.MonthName([DATA])),3)
+
+&"/"&
+
+Number.ToText(Date.Year([DATA]))),
+    #"Colunas Renomeadas" = Table.RenameColumns(NOME_ANO_MES,{{"SKDATA", "SKDATA2"}}),
+    #"Personalização Adicionada" = Table.AddColumn(#"Colunas Renomeadas", "SKDATA", each Number.FromText(
+Number.ToText(Date.Year([DATA])) 
+
+& Text.PadStart(
+    Number.ToText(Date.Month([DATA])), 2,"0")
+
+& Text.PadStart(
+    Number.ToText(Date.Day([DATA])), 2,"0")
+
+)),
+    SKDATAS = Table.TransformColumnTypes(#"Personalização Adicionada",{{"SKDATA", Int64.Type}}),
+    #"Linhas Classificadas1" = Table.Sort(SKDATAS,{{"SKDATA", Order.Descending}}),
+    #"Duplicatas Removidas" = Table.Distinct(#"Linhas Classificadas1", {"SKDATA"}),
+    #"Linhas Classificadas" = Table.Sort(#"Duplicatas Removidas",{{"SKDATA", Order.Ascending}}),
+    #"Personalização Adicionada1" = Table.AddColumn(#"Linhas Classificadas", "TRIMESTRE", each Number.ToText(Date.QuarterOfYear([DATA])) & " - Trimestre")
+in
+    #"Personalização Adicionada1"
